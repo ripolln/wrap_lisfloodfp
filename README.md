@@ -1,6 +1,6 @@
 # lisfloodpy
 
-A python wrap for the LISFLOOD-FP hydrodinamic numerical model
+A python wrap for the LISFLOOD-FP hydrodinamic numerical model.
 
 ## Table of contents
 1. [Description](#desc)
