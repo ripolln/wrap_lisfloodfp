@@ -25,7 +25,7 @@ import copy
 
 def plot_dem_preprocessed(xcoor, ycoor, depth,
              x_p1, y_p1, x_p2, y_p2, x_p3, y_p3, x_p4, y_p4,
-             xq, yq, id_trans, xb, yb):
+             xq, yq, id_trans, xb, yb, vmin=-2, vmax=10):
     'Plots preprocessed dem'
 
     # colormap
@@ -37,7 +37,11 @@ def plot_dem_preprocessed(xcoor, ycoor, depth,
     fig, ax = plt.subplots(1, 1, figsize=(14, 7))
 
     # plot depth
-    im1 = ax.pcolor(xcoor, ycoor, depth, shading='auto', cmap=cmap, vmin=-2, vmax=10)
+    im1 = ax.pcolor(
+        xcoor, ycoor, depth, 
+        shading='auto', cmap=cmap,
+        vmin=vmin2, vmax=vmax
+    )
 
     # plot outer perimeters
     ax.plot(x_p1, y_p1, '.', color='C4')    # Purple dots   
@@ -64,7 +68,7 @@ def plot_dem_preprocessed(xcoor, ycoor, depth,
 
     return fig
 
-def plot_dem_raw(xcoor, ycoor, depth):
+def plot_dem_raw(xcoor, ycoor, depth, vmin=-2, vmax=10):
     'Plots raw dem'
 
     # colormap
@@ -76,7 +80,11 @@ def plot_dem_raw(xcoor, ycoor, depth):
     fig, ax = plt.subplots(1, 1, figsize=(14, 7))
 
     # plot depth
-    im1 = ax.pcolor(xcoor, ycoor, depth, shading='auto', cmap=cmap, vmin=-2, vmax=10)
+    im1 = ax.pcolor(
+        xcoor, ycoor, depth,
+        shading='auto', cmap=cmap,
+        vmin=vmin, vmax=vmax,
+    )
 
     # add colorbar
     cbar = plt.colorbar(im1)
@@ -186,15 +194,20 @@ def plot_var(name, xds_out_case, var_name, p_export_case, case_id, sim_time, cma
         var_min = 0
         var_max = sim_time
     if var_name in ['max', 'mxe']:
-        var_max = np.nanmax(var)
+        var_max = 5  # TODO REPASAR np.nanmax(var)
         var_min = np.nanmin(var)
 
     # new figure
-    fig, ax0 = plt.subplots(nrows=1, figsize=(12, 12))
+    fig, ax0 = plt.subplots(nrows=1, figsize=(18, 16))
     var_title = '{0} - {1} - case{2}'.format(var_name, name, case_id)  # title
 
     # pcolormesh
-    im = plt.pcolormesh(X, Y, var, cmap=cmap, vmin= var_min, vmax= var_max)
+    im = plt.pcolormesh(
+        X, Y, var,
+        cmap= cmap,
+        vmin= var_min, vmax= var_max,
+        shading = 'gouraud',
+    )
 
     # customize pcolormesh
     plt.title(var_title, fontsize = 14, fontweight='bold')
