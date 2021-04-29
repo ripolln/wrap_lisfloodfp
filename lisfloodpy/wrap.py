@@ -468,7 +468,7 @@ class LisfloodDEM(object):
 
         return fig
 
-    def plot_raw(self):
+    def plot_raw(self, vmin=-2, vmax=10):
         'Plot raw DEM'
 
         # get x,y coordinates and preprocessed depth
@@ -476,7 +476,7 @@ class LisfloodDEM(object):
         ycoor = self.ycoor
         depth = self.depth_preprocessed
 
-        fig = plot_dem_raw(xcoor, ycoor, depth)
+        fig = plot_dem_raw(xcoor, ycoor, depth, vmin, vmax)
 
         return fig
 
