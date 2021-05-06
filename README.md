@@ -85,7 +85,7 @@ Currently Linux and OS X precompiled LISFLOOD-FP executables are attached to the
 ### .py examples 
 
 - [demo 01 - Coastal flooding event](./scripts/demo_coastal_flooding.py): DEM preprocessing and coastal inundation with shoreline transects inflow methodology 
-- [demo 02 - Rainfall flooding event](./scripts/demo_rainfall_flooding.py): non-stationary example
+- [demo 02 - Rainfall flooding event](./scripts/demo_rainfall_flooding.py): Simple flooding event due to constant rainfall. No DEM preprocessing.
 
 <a name="exp_2"></a>
 ### notebook examples 
