@@ -30,10 +30,10 @@ Coastal inundation cases are achieved by preprocessing the study site digital te
 <a name="mc"></a>
 ## Main contents
 
-[wraplisfloodfp](./wraplisfloodfp/): LISFLOOD-FP numerical model toolbox 
-- [io](./wraplisfloodfp/io.py): LISFLOOD-FP numerical model input/output operations
-- [wrap](./wraplisfloodfp/wrap.py): LISFLOOD-FP numerical model python wrap 
-- [plots](./wraplisfloodfp/plots.py): plotting module 
+[wlisflood](./wlisflood/): LISFLOOD-FP numerical model toolbox 
+- [io](./wlisflood/io.py): LISFLOOD-FP numerical model input/output operations
+- [wrap](./wlisflood/wrap.py): LISFLOOD-FP numerical model python wrap 
+- [plots](./wlisflood/plots.py): plotting module 
 
 
 <a name="doc"></a>
@@ -58,7 +58,7 @@ Source code is currently privately hosted on GitLab at:  <https://gitlab.com/geo
 
 This toolbox is developed using python 3.7, the use of a virtual environment is highly recommended.
 
-Install requirements. Navigate to the base root of [wraplisfloodfp](./) and execute:
+Install requirements. Navigate to the base root of [wlisflood](./) and execute:
 
 ```bash
    pip install -r requirements/requirements.txt
@@ -74,7 +74,7 @@ Basemap library is used for some of the plots inside this project, to install it
 <a name="ins_lf"></a>
 ### Install LISFLOOD-FP 
 
-Currently Linux and OS X precompiled LISFLOOD-FP executables are attached to the repository at the [bin](./wraplisfloodfp/resources/bin/) folder, no installation is needed
+Currently Linux and OS X precompiled LISFLOOD-FP executables are attached to the repository at the [bin](./wlisflood/resources/bin/) folder, no installation is needed
 
 
 <a name="exp"></a>

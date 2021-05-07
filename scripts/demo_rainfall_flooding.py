@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 sys.path.insert(0, op.join(op.dirname(__file__), '..'))
 
 # LISFLOOD module 
-from wraplisfloodfp.wrap import LisfloodProject, LisfloodWrap 
-from wraplisfloodfp.wrap import LisfloodDEM, LisfloodCase
+from wlisflood.wrap import LisfloodProject, LisfloodWrap 
+from wlisflood.wrap import LisfloodDEM, LisfloodCase
 
-from wraplisfloodfp.plots import plot_output_2d
+from wlisflood.plots import plot_output_2d
 
 
 # --------------------------------------
