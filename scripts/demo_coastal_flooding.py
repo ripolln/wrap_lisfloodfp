@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 sys.path.insert(0, op.join(op.dirname(__file__), '..'))
 
 # LISFLOOD module 
-from wlisflood.wrap import LisfloodProject, LisfloodWrap 
+from wlisflood.wrap import LisfloodProject, LisfloodWrap
 from wlisflood.wrap import LisfloodDEM, LisfloodCase
 
 from wlisflood.plots import plot_output_2d
@@ -116,7 +116,7 @@ for sl in qs.sl.values:
         lc.qvar_ycoord = q_inflow.y.values
         lc.qvar_profile = q_inflow.profile.values + 1
         lc.qvar_value = qs_sel['q']
-        lc.qvar_freq = 'hours' 
+        lc.qvar_freq = 'hours'
 
         # set constant water level boundaries
         lc.hfix_activate = True
