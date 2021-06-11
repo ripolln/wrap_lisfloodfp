@@ -3,6 +3,7 @@
 
 import os
 import os.path as op
+import glob
 
 import numpy as np
 import pandas as pd
@@ -102,7 +103,7 @@ class LisfloodIO(object):
             # HVAR
             if lc.hvar_activate:
                 for x, y, p in zip(lc.hvar_xcoord, lc.hvar_ycoord, lc.hvar_profile):
-                    f.write('{0}\t{1:f}\t{2:f}\t{3}\thp_{4:f}\n'.format(
+                    f.write('{0}\t{1:f}\t{2:f}\t{3}\thp_{4}\n'.format(
                         bc_ide, x, y,'HVAR', int(p)))
 
     def make_bdy(self, p_file, lc):
@@ -219,6 +220,9 @@ class LisfloodIO(object):
         (other optional commands...)
         '''
 
+        # TODO add some missing conf. parameters
+        # - mint_hk
+
         # open and write .par file
         with open(p_file, 'w') as f:
             f.write('# Flooding {0}\n'.format(lc.id))
@@ -293,6 +297,39 @@ class LisfloodIO(object):
 
             np.savetxt(f, self.proj.depth, fmt='%.1f')
 
+    def output_XY(self):
+        'Return Y and X arrays for output grid files'
+
+        X = np.arange(
+            self.proj.xll_corner,
+            self.proj.xll_corner + self.proj.cellsize*self.proj.ncols,
+            self.proj.cellsize
+        )
+        Y = np.arange(
+            self.proj.yll_corner,
+            self.proj.yll_corner + self.proj.cellsize*self.proj.nrows,
+            self.proj.cellsize
+        )
+
+        return X, Y
+
+    def output_add_metadata(self, xds_out):
+        'Adds output metadata to 2D outputs'
+
+        # attributes
+        xds_out.attrs['nondata'] = self.proj.nondata
+        xds_out.attrs['simtime(h)'] = self.proj.sim_time / 3600.0
+        xds_out.attrs['xllcorner'] = self.proj.xll_corner
+        xds_out.attrs['yllcorner'] = self.proj.yll_corner
+        xds_out.attrs['cellsize'] = self.proj.cellsize
+
+        # add info about coordinates
+        if self.proj.cartesian:
+            xds_out.attrs['xlabel'] = 'X_utm (m)'
+            xds_out.attrs['ylabel'] = 'Y_utm (m)'
+
+        return xds_out
+
     def output_case_mass(self, p_case):
         'Read output .mass files from and returns xarray.Dataset'
 
@@ -354,7 +391,10 @@ class LisfloodIO(object):
 
             var_ls.append(var)
             units_ls.append(var_units)
-            data_ls.append(np.loadtxt(p_file, skiprows=6))
+
+            # read data
+            dd = np.flipud(np.loadtxt(p_file, skiprows=6))
+            data_ls.append(dd)
 
         xds_out = xr.Dataset(
             {
@@ -367,27 +407,69 @@ class LisfloodIO(object):
         )
 
         # set X and Y values
-        X = np.arange(
-            self.proj.xll_corner,
-            self.proj.xll_corner + self.proj.cellsize*self.proj.ncols,
-            self.proj.cellsize
-        )
-        Y = np.arange(
-            self.proj.yll_corner,
-            self.proj.yll_corner + self.proj.cellsize*self.proj.nrows,
-            self.proj.cellsize
-        )
-        xds_out = xds_out.assign_coords(X=X)
-        xds_out = xds_out.assign_coords(Y=Y)
+        X, Y = self.output_XY()
+        xds_out = xds_out.assign_coords(X = X)
+        xds_out = xds_out.assign_coords(Y = Y)
 
-        # add info
-        xds_out.attrs['nondata'] = self.proj.nondata
-        xds_out.attrs['simtime(h)'] = self.proj.sim_time / 3600
+        # add metadata
+        xds_out = self.output_add_metadata(xds_out)
 
-        # add info about coordinates 
-        if self.proj.cartesian:
-            xds_out.attrs['xlabel'] = 'X_utm (m)'
-            xds_out.attrs['ylabel'] = 'Y_utm (m)'
+        return xds_out
+
+    def output_case_wd(self, p_case):
+        '''
+        Read output from 2D-WD files and returns xarray.Dataset
+
+        p_outputs - path to case outputs folder
+
+        2D-WD files: inundation along execution time
+        '''
+
+        # path to output folder
+        p_out = op.join(p_case, self.proj.dirroot)
+
+        # list all .wd files
+        fs_wds = sorted(glob.glob(op.join(p_out, '*.wd')))
+
+        # read metadata from first file header
+        with open(fs_wds[0]) as f:
+            ncols = int(f.readline().split()[1])
+            nrows = int(f.readline().split()[1])
+            xllc = float(f.readline().split()[1])
+            yllc = float(f.readline().split()[1])
+            cs = float(f.readline().split()[1])
+            nd = float(f.readline().split()[1])
+
+        lt = len(fs_wds)
+
+        # get X and Y values
+        X, Y = self.output_XY()
+
+        # get simulation time from .mass file
+        xds_mass = self.output_case_mass(p_case)
+        time = xds_mass.time.values[:]
+
+        # init output holder
+        data = np.zeros((lt, nrows, ncols)) * np.nan
+
+        # read all .wd files
+        for c, f in enumerate(fs_wds):
+            data[c,:,:] = np.flipud(np.loadtxt(f, skiprows=6))
+
+        # store everything into a Dataset
+        xds_out = xr.Dataset(
+            {
+                'eta': (('time','Y','X',), data, {'units':'m'}),
+            },
+            coords = {
+                'time': time,
+                'Y': Y,
+                'X': X,
+            },
+        )
+
+        # add metadata
+        xds_out = self.output_add_metadata(xds_out)
 
         return xds_out
 
