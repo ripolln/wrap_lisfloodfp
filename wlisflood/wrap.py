@@ -119,6 +119,29 @@ class LisfloodDEM(object):
         # prepare copy of depth for preprocessing
         self.depth_preprocessed = np.copy(self.depth)
 
+    def get_coastal_points(self):
+        '''
+        Finds coastal points
+        '''
+
+        # get dem data
+        xcoor = self.xcoor
+        ycoor = self.ycoor
+        mask = self.mask
+
+        # find coastal points
+        xpos, ypos = self.perimeter_position(mask, outer = False)
+        id_trans = np.zeros(len(xpos))
+
+        # return xarray.Dataset
+        return xr.Dataset(
+            {
+                'x': (['pts'], xcoor[xpos, ypos]),
+                'y' :(['pts'], ycoor[xpos, ypos]),
+                'profile' :(['pts'], id_trans),
+            },
+        )
+
     def preprocess_inner_perimeters(self):
         '''
         Preprocess DEM: inner perimeters
@@ -197,12 +220,12 @@ class LisfloodDEM(object):
         mask                 - depth file mask
         outer (True / False) - obtains outer / inner perimeter points
 
-        returns position of the perimeter: xpos, ypos 
+        returns position of the perimeter: xpos, ypos
         '''
 
         # inner / outer detector switch
         if outer:
-            value = -9999 
+            value = -9999
         else:
             value = 1
 
@@ -518,7 +541,7 @@ class LisfloodCase(object):
         self.hvar_profile   = None   # level profiles (int list / 1D np array)
         self.hvar_xcoord    = None   # x coordinates (int list / 1D np array)
         self.hvar_ycoord    = None   # y coordinates (int list / 1D np array)
-        self.qvar_freq      = None   # level time frequency (HOURS, ...)
+        self.hvar_freq      = None   # level time frequency (HOURS, ...)
         self.hvar_value     = None   # level values (xarray.DataArray. coords: profile, time)
                                      # level units: m 
 
@@ -543,7 +566,8 @@ class LisfloodProject(object):
         self.name = n_proj                       # project name
 
         # sub folders
-        self.p_cases = op.join(self.p_main, 'cases')
+        self.p_cases = op.join(self.p_main, 'cases')    # cases folder
+        self.p_export = op.join(self.p_main, 'export')  # export figures folder
 
         # topobathymetry depth value (2D numpy.array)
         self.cartesian = None       # units convention
@@ -744,4 +768,22 @@ class LisfloodWrap(object):
         xds_out = xr.concat(l_out, dim='case')
 
         return(xds_out)
+
+    def extract_output_wd(self, case_ix = 0):
+        '''
+        extract output water level from wd files for a choosen case
+
+        case_ix - case index
+
+        return xarray.Dataset
+        '''
+
+        # get selected case folder
+        run_dirs = self.get_run_folders()
+        p_case = run_dirs[case_ix]
+
+        # read wd files to xarray.Dataset
+        wds = self.io.output_case_wd(p_case)
+
+        return wds
 
