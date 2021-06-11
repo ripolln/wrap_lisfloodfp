@@ -21,7 +21,53 @@ import glob
 import copy
 
 
-# TODO refactor lib
+# TODO test, doc, and example next functions: 
+# - plot_raster
+# - update_wd
+# - plot_output_volumes
+# - plot_volumes
+# - plot_volumes_matrix
+# - volumes_matrix
+# - plot_input_profiles
+# - plot_profiles_matrix
+# - input_matrix
+# - plot_output_matrix
+# - output_matrix
+# - perimeter_matrix
+# - plot_bci_perimeter
+# - plot_perimeter
+# - plot_bc_matrix
+# - bc_matrix
+# - plot_zbeach
+
+
+# some utils
+
+def GetDivisors(x):
+    l_div = []
+    i = 1
+    while i<x:
+        if x%i == 0:
+            l_div.append(i)
+        i = i + 1
+    return l_div
+
+def GetBestRowsCols(n):
+    'try to square number n, used at gridspec plots'
+
+    sqrt_n = sqrt(n)
+    if sqrt_n.is_integer():
+        n_r = int(sqrt_n)
+        n_c = int(sqrt_n)
+    else:
+        l_div = GetDivisors(n)
+        n_c = l_div[int(len(l_div)/2)]
+        n_r = int(n/n_c)
+
+    return n_r, n_c
+
+
+# DEM plots
 
 def plot_dem_preprocessed(xcoor, ycoor, depth,
              x_p1, y_p1, x_p2, y_p2, x_p3, y_p3, x_p4, y_p4,
@@ -95,48 +141,47 @@ def plot_dem_raw(xcoor, ycoor, depth, vmin=-2, vmax=10):
     return fig
 
 
-# Plot 1 flood map  
+# input / output plots
+
 def plot_raster(filepath, mask, bmap, max_wd, min_wd):
   with rio.open(filepath) as src:
       w = copy.copy(cmo.get_cmap('cool')) 
       w.set_under(color='none')
       w.set_over(color=w(0.9999999))
-      
+
       wd = np.flipud(src.read(1))
       wdg = np.empty((mask.shape[0],mask.shape[1]))
       maskg = np.flipud(mask)
-      
+
       for j in range(mask.shape[1]):
           for k in range(mask.shape[0]):
               if (maskg[k,j] == 1):
                   wdg[k][j] = wd[k][j]
               else:
                   wdg[k][j] = -1
-      
+
       bmap.imshow(wdg,cmap=w,vmin=min_wd,vmax=max_wd,alpha=1)
-      
-# Create water depths animation
+
 def update_wd(i):
+    'water depth animation'
     oce = copy.copy(cm.get_cmap('cool'))
     oce.set_under(color='lightgreen')
     im_normed = arr[i]
-    
+
     wdg = np.empty((im_normed.shape[0],im_normed.shape[1]))
     #    mask = np.copy(depth)
-    
+
     #    pos = np.where(depth >= 0)
     #    mask[pos[0], pos[1]] = 1
-    
+
     for j in range(im_normed.shape[1]):
         for k in range(im_normed.shape[0]):
             if (mask[k,j] == 1):
                 wdg[k][j] = im_normed [k][j]
-    
+
     ax.imshow(wdg, cmap = oce, vmin=0.02, vmax=1)
     ax.set_title('Water depths Kwajalein - ' + str(dates[i]), fontsize=15,pad=15)
     ax.set_axis_off() 
-
-
 
 def plot_output_2d(name, xds_out, var_name, p_export, sim_time, cmap=cmo.ice_r):
     '''
@@ -177,19 +222,17 @@ def plot_var(name, xds_out_case, var_name, p_export_case, case_id, sim_time, cma
 
     if not op.isdir(p_export_case): os.makedirs(p_export_case)
 
-    xds_oct = xds_out_case
-
     # get mesh data from output dataset
-    X = xds_oct.X.values[:]
-    Y = xds_oct.Y.values[:]
+    X = xds_out_case.X.values[:]
+    Y = xds_out_case.Y.values[:]
 
     # get variable and units
-    var = np.flipud(xds_oct[var_name].values[:])
+    var = xds_out_case[var_name].values[:]
     var[var==0] = np.nan
     var[var==-9999] = np.nan
     var[var>=100] = np.nan
-    var_units = xds_oct[var_name].attrs['units']
-    
+    var_units = xds_out_case[var_name].attrs['units']
+
     if var_name in ['inittm', 'maxtm', 'totaltm']:
         var_min = 0
         var_max = sim_time
@@ -211,8 +254,8 @@ def plot_var(name, xds_out_case, var_name, p_export_case, case_id, sim_time, cma
 
     # customize pcolormesh
     plt.title(var_title, fontsize = 14, fontweight='bold')
-    plt.xlabel(xds_oct.attrs['xlabel'], fontsize = 12)
-    plt.ylabel(xds_oct.attrs['ylabel'], fontsize = 12)
+    plt.xlabel(xds_out_case.attrs['xlabel'], fontsize = 12)
+    plt.ylabel(xds_out_case.attrs['ylabel'], fontsize = 12)
 
     plt.axis('scaled')
     plt.xlim(X[0], X[-1])
@@ -227,10 +270,10 @@ def plot_var(name, xds_out_case, var_name, p_export_case, case_id, sim_time, cma
     # export fig
     p_ex = op.join(p_export_case, 'outmap_{0}_{1}.png'.format(var_name, case_id))
     fig.savefig(p_ex)
-    
+
     # close fig 
     plt.close()
- 
+
 def plot_output_volumes(name, xds_out, var_name, p_export):
     '''
     Plots LISFLOOD execution volume of water time-series
@@ -260,7 +303,7 @@ def plot_output_volumes(name, xds_out, var_name, p_export):
 
 def plot_volumes(name, xds_out_case, var_name, p_export_case, case_id):
     '''
-    Plots LISFLOOD execution output for selected var and case
+    Plots LISFLOOD execution output volumes for selected case
 
     name         - project name
     xds_out_case - lisflood output (xarray.Dataset)
@@ -270,14 +313,12 @@ def plot_volumes(name, xds_out_case, var_name, p_export_case, case_id):
 
     if not op.isdir(p_export_case): os.makedirs(p_export_case)
 
-    xds_oct = xds_out_case
-
     # get variable and units
-    var_qin = xds_oct['Qin'].values[:]
-    var_qout = xds_oct['Qout'].values[:]
-    var_units = xds_oct['Qin'].attrs['units']
-    time = xds_oct['time'].values[:]
-    var_vol = xds_oct['Vol'].values[:]
+    var_qin = xds_out_case['Qin'].values[:]
+    var_qout = xds_out_case['Qout'].values[:]
+    var_units = xds_out_case['Qin'].attrs['units']
+    time = xds_out_case['time'].values[:]
+    var_vol = xds_out_case['Vol'].values[:]
 
     # new figure
     fig, (ax0, ax1) = plt.subplots(nrows=2, figsize=(16, 5), sharex=True)
@@ -306,14 +347,14 @@ def plot_volumes(name, xds_out_case, var_name, p_export_case, case_id):
     # export fig
     p_ex = op.join(p_export_case, 'outmap_{0}_{1}.png'.format(var_name, case_id))
     fig.savefig(p_ex)
-    
+
     # close fig 
     plt.close()
 
 def plot_volumes_matrix(name, xds_out_ls, var_name, p_export, 
                         n_rows=False, n_cols=False, show=False):
     '''
-    Plots LISFLOOD execution output for selected var, for every case
+    Plots LISFLOOD execution output volumes for every case
 
     name         - project name
     xds_out_case - lisflood output (xarray.Dataset)
@@ -346,20 +387,20 @@ def plot_volumes_matrix(name, xds_out_ls, var_name, p_export,
 
     for j in range(len(xds_out_ls)):
         xds_out = xds_out_ls[j]
-        
+
         for case_n, (case_ix) in enumerate(xds_out.case.values[:]):
-            
+
             # select case
             xds_out_case = xds_out.sel(case=case_ix)
             var_units = xds_out_case[var_name].attrs['units']
-    
+
             # plot variable times
             ax = plt.subplot(gs[gr, gc])
             ax = volumes_matrix(
                 ax, case_ix, xds_out_case, var_name, 
                 var_max=var_max_all, var_min=var_min_all, 
             )
-    
+
             # counter
             gc += 1
             if gc >= n_cols:
@@ -368,16 +409,16 @@ def plot_volumes_matrix(name, xds_out_ls, var_name, p_export,
 
     # show and return figure
     if show: plt.show()
-    
+
     p_ex = op.join(p_export, 'volumes_{0}_matrix.png'.format(var_name))
     fig.savefig(p_ex)
-    
+
     plt.close()
 
 def volumes_matrix(ax, case_ix, xds_out_case, var_name, 
                    cmap='jet', var_max=None, var_min=None):
     '''
-    Plots LISFLOOD execution output 
+    Plots LISFLOOD execution output volumes matrix
 
     name         - project name
     xds_out_case - lisflood output (xarray.Dataset)
@@ -393,7 +434,7 @@ def volumes_matrix(ax, case_ix, xds_out_case, var_name,
     var_qin = xds_out_case['Qin'].values[:]
     var_qout = xds_out_case['Qout'].values[:]
     time = xds_out_case['time'].values[:]
-    
+
     # plot 
     ax.plot(time, var_qin, '.-r', linewidth=1, markersize=1, label='Qin')
     ax.plot(time, var_qout, '.-b', linewidth=1, markersize=1, label='Qout')
@@ -412,34 +453,10 @@ def volumes_matrix(ax, case_ix, xds_out_case, var_name,
     plt.xlim(time[0], time[-1])
     plt.ylim(0, var_max)
     plt.axis('off')
-    
-
-def GetDivisors(x):
-    l_div = []
-    i = 1
-    while i<x:
-        if x%i == 0:
-            l_div.append(i)
-        i = i + 1
-    return l_div
-
-def GetBestRowsCols(n):
-    'try to square number n, used at gridspec plots'
-
-    sqrt_n = sqrt(n)
-    if sqrt_n.is_integer():
-        n_r = int(sqrt_n)
-        n_c = int(sqrt_n)
-    else:
-        l_div = GetDivisors(n)
-        n_c = l_div[int(len(l_div)/2)]
-        n_r = int(n/n_c)
-
-    return n_r, n_c
 
 def plot_input_profiles(name, xds_bc, var_name, p_export):
     '''
-    Plots LISFLOOD execution output for every case
+    Plots input profiles 
 
     name       - project name
     xds_bc     - lisflood input (xarray.Dataset)
@@ -467,7 +484,7 @@ def plot_input_profiles(name, xds_bc, var_name, p_export):
 def plot_profiles_matrix(name, xds_bc_case, var_name, p_export, case_id, 
                          n_rows=False, n_cols=False, show=False):
     '''
-    Plots LISFLOOD execution input for selected var, for every case
+    Plots profiles matrix 
 
     name         - project name
     xds_out_case - lisflood input (xarray.Dataset)
@@ -495,7 +512,7 @@ def plot_profiles_matrix(name, xds_bc_case, var_name, p_export, case_id,
 
     xds_out = xds_bc_case
     for pf_n, (pf_ix) in enumerate(profiles):
-        
+
         # select case
         xds_out_pf = xds_out.sel(pts=pf_ix)
 
@@ -505,7 +522,7 @@ def plot_profiles_matrix(name, xds_bc_case, var_name, p_export, case_id,
             ax, pf_ix, xds_out_pf, var_name, 
             var_max=var_max_all, var_min=var_min_all, 
         )
-        
+
         if gc != 0:     ax.set_yticklabels([])
 
         # counter
@@ -517,16 +534,16 @@ def plot_profiles_matrix(name, xds_bc_case, var_name, p_export, case_id,
     time = xds_out_pf.time.values[:]
     dates = pd.date_range(start=time[0], periods=time.size, freq='1H'
                           ).strftime('%Y/%m/%d-%H:%M')
-    
+
     fig.suptitle('Max Overtopping: {0}m3/s/m,  Time: {1} - {2}'.format(
         var_max_all, dates[0], dates[-1]), fontsize=30, fontweight='bold')
-    
+
     # show and return figure
     if show: plt.show()
-    
+
     p_ex = op.join(p_export, 'input_profiles_{0}_matrix.png'.format(case_id))
     fig.savefig(p_ex)
-    
+
     plt.close()
 
 def input_matrix(ax, pf_ix, xds_out_pf, var_name, var_max=None, var_min=None):
@@ -535,7 +552,7 @@ def input_matrix(ax, pf_ix, xds_out_pf, var_name, var_max=None, var_min=None):
     # get variable and units
     var = xds_out_pf[var_name].values[0,:]
     time = xds_out_pf.time.values[:]
-    
+
     # plot
     ax.plot(time, var, '.-r', linewidth=1, markersize=1)
 
@@ -585,26 +602,26 @@ def plot_output_matrix(name, xds_out_ls, var_name, p_export, cmap='jet',
 
     for j in range(len(xds_out_ls)):
         xds_out = xds_out_ls[j]
-        
+
         for case_n, (case_ix) in enumerate(xds_out.case.values[:]):
-            
+
             # select case
             xds_out_case = xds_out.sel(case=case_ix)
             var_units = xds_out_case[var_name].attrs['units']
-    
+
             # plot variable times
             ax = plt.subplot(gs[gr, gc])
             pc = output_matrix(
                 ax, case_ix, xds_out_case, var_name, cmap,
                 var_max=var_max_all, var_min=var_min_all, 
             )
-    
+
             # get lower positions
             if gr==n_rows-1 and gc==0:
                 pax_l = ax.get_position()
             elif gr==n_rows-1 and gc==n_cols-1:
                 pax_r = ax.get_position()
-    
+
             # counter
             gc += 1
             if gc >= n_cols:
@@ -619,10 +636,10 @@ def plot_output_matrix(name, xds_out_ls, var_name, p_export, cmap='jet',
 
     # show and return figure
     if show: plt.show()
-    
+
     p_ex = op.join(p_export, 'output_{0}_matrix.png'.format(var_name))
     fig.savefig(p_ex)
-    
+
     plt.close()
 
 def output_matrix(ax, case_ix, xds_out_case, var_name, cmap,
@@ -642,15 +659,16 @@ def output_matrix(ax, case_ix, xds_out_case, var_name, cmap,
     Y = xds_out_case.Y.values[:]
 
     # get variable and units
+    # TODO: test flipud
     var = np.flipud(xds_out_case[var_name].values[:])
-    
+
     # newcmap
     # if var_name=='W': 	 newcmap = custom_cmap(100, 'plasma_r', 0.05, 0.9, 'viridis', 0.2, 1)
     # if var_name=='Hsig': newcmap = custom_cmap(100, 'YlOrRd', 0.09, 0.9, 'YlGnBu_r', 0, 0.88)
 
     # pcolormesh
     pc = ax.pcolormesh(X, Y, var, cmap=cmap, vmin= var_min, vmax= var_max)
-    
+
     # number
     ax.text(X[5], Y[5], case_ix, color='fuchsia', fontweight='bold', fontsize=20)
 
@@ -664,13 +682,13 @@ def output_matrix(ax, case_ix, xds_out_case, var_name, cmap,
     plt.xlim(X[0], X[-1])
     plt.ylim(Y[0], Y[-1])
     plt.axis('off')
-    
+
     return pc
 
 def perimeter_matrix(ax, case_ix, xds_out_case, var_name, 
                     cmap='jet', var_max=None, var_min=None):
     '''
-    Plots LISFLOOD execution output 
+    Plots LISFLOOD perimeters
 
     name         - project name
     xds_out_case - lisflood output (xarray.Dataset)
@@ -687,11 +705,12 @@ def perimeter_matrix(ax, case_ix, xds_out_case, var_name,
     # Y = xds_out_case.Y.values[:]
 
     # get variable and units
+    # TODO: test flipud
     var = np.flipud(xds_out_case[var_name].values[:])
-    
+
     # pcolormesh
     pc = ax.pcolormesh(var, cmap=cmap, vmin= var_min, vmax= var_max)
-    
+
     # number
     ax.text(5, 5, case_ix, color='fuchsia', fontweight='bold', fontsize=20)
 
@@ -705,7 +724,7 @@ def perimeter_matrix(ax, case_ix, xds_out_case, var_name,
     # plt.xlim(X[0], X[-1])
     # plt.ylim(Y[0], Y[-1])
     plt.axis('off')
-    
+
     return pc
 
 def plot_bci_perimeter(p_cases, name, depth, xds_Q, xds_H, p_export, 
@@ -718,14 +737,14 @@ def plot_bci_perimeter(p_cases, name, depth, xds_Q, xds_H, p_export,
     var_name   - 'max', 'mxe', 'inittm', 'maxtm', 'totaltm'
     p_export   - path for exporting figures
     '''
-    
+
     # make export dir
     if not op.isdir(p_export): os.makedirs(p_export)
 
     # get folder cases
     ldir = sorted(os.listdir(p_cases))
     fp_ldir = [op.join(p_cases, c) for c in ldir]
-    
+
     for case_ix, p_case in enumerate(fp_ldir):
 
         # select case files
@@ -740,7 +759,7 @@ def plot_bci_perimeter(p_cases, name, depth, xds_Q, xds_H, p_export,
         plot_perimeter(
             name, xds_q, xds_h, depth, p_export_case, case_id, cmap
             )
-        
+
 def plot_perimeter(name, xds_q, xds_h, depth, p_export_case, case_id, cmap):
     '''
     Plots LISFLOOD execution output for selected var and case
@@ -750,51 +769,51 @@ def plot_perimeter(name, xds_q, xds_h, depth, p_export_case, case_id, cmap):
     var_name     - 'max', 'mxe', 'inittm', 'maxtm', 'totaltm'
     p_export     - path for exporting figures
     '''
-    
+
     if not op.isdir(p_export_case): os.makedirs(p_export_case)
-    
+
     # set masks
     mask_q, mask_h = depth.copy(), depth.copy()
-    
+
     mask_q[:,:] = np.nan
     mask_q[xds_q['x_pos'].values, xds_q['y_pos']] = xds_q['val'].max(axis=1)
-    
+
     mask_h[:,:] = np.nan
     mask_h[xds_h['x_pos'].values, xds_h['y_pos']] = xds_h['val'].max(axis=1)
-    
+
     # var info
     mask = [mask_q, mask_h]
     var_name = ['Overtopping', 'Sea level']
     var_units = ['m3/s/m', 'm']
     cmap = [cmo.thermal, cmo.balance]
-    
+
     # new figure
     fig, (ax0, ax1) = plt.subplots(ncols=2, figsize=(20, 12))
 
     for i,ax in enumerate([ax0,ax1]):
         # pcolormesh
+        # TODO test flipud
         im = ax.pcolormesh(np.flipud(mask[i]), cmap=cmap[i])#, vmin= var_min, vmax= var_max)
-    
+
         # customize pcolormesh
         var_title = '{0} - {1} - case{2}'.format(var_name[i], name, case_id)  # title
         ax.set_title(var_title, fontsize = 14, fontweight='bold')
         ax.axis('off')
-    
+
         ax.axis('scaled')
-       
+
         # add custom colorbar
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.1)
         plt.colorbar(im, cax=cax)
         plt.ylabel('{0} ({1})'.format(var_name[i], var_units[i]), fontsize = 12)
-    
+
     # export fig
     p_ex = op.join(p_export_case, 'perimeter_{0}.png'.format(case_id))
     fig.savefig(p_ex)
-    
+
     # close fig 
     plt.close()
- 
 
 def plot_bc_matrix(name, xds_q_ls, xds_h_ls, depth, var_name, p_export, 
                    n_rows=False, n_cols=False, show=False):
@@ -834,18 +853,18 @@ def plot_bc_matrix(name, xds_q_ls, xds_h_ls, depth, var_name, p_export,
     for j in range(len(xds_q_ls)):
         xds_q = xds_q_ls[j]
         xds_h = xds_h_ls[j]
-        
+
         for case_n, (case_ix) in enumerate(xds_q.case.values[:]):
-            
+
             # select case
             xds_q_case = xds_q.sel(case=case_ix)
             var_units_q = xds_q_case[var_name].attrs['units']
             xds_h_case = xds_h.sel(case=case_ix)
             var_units_h = xds_h_case[var_name].attrs['units']
-    
+
             # plot variable times
             ax = plt.subplot(gs[gr, gc])
-            
+
             pc_H = bc_matrix(
                 ax, case_ix, xds_h_case, depth, var_name, 
                 var_max=var_max_h, var_min=var_min_h, cmap='coolwarm'
@@ -854,13 +873,13 @@ def plot_bc_matrix(name, xds_q_ls, xds_h_ls, depth, var_name, p_export,
                 ax, case_ix, xds_q_case, depth, var_name, 
                 var_max=var_max_q, var_min=var_min_q, cmap='viridis_r'
             )
-            
+
             norm = matplotlib.colors.Normalize(vmin=-1, vmax=1)
             color = norm(xds_h_case['val'].max(axis=1).max())
             cmap = matplotlib.cm.get_cmap('coolwarm')
             rgba = cmap(color)
             ax.set_facecolor(rgba)
-            
+
             # BC modes
             ax.text(xds_h_case['x'].min(), xds_h_case['y'].max() - 100, 
                     '{0} (P{1})'.format(str(xds_h_case.mode.values), 
@@ -877,13 +896,13 @@ def plot_bc_matrix(name, xds_q_ls, xds_h_ls, depth, var_name, p_export,
                 pax_l = ax.get_position()
             elif gr==n_rows-1 and gc==n_cols-1:
                 pax_r = ax.get_position()
-    
+
             # counter
             gc += 1
             if gc >= n_cols:
                 gc = 0
                 gr += 1
-    
+
     cbar_ax = fig.add_axes([pax_l.x0, pax_l.y0-0.05, pax_r.x1 - pax_l.x0, 0.02])
     cb = fig.colorbar(pc_Q, cax=cbar_ax, orientation='horizontal')
     cb.set_label(label='{0}'.format(var_units_q), size=20, weight='bold')
@@ -896,16 +915,16 @@ def plot_bc_matrix(name, xds_q_ls, xds_h_ls, depth, var_name, p_export,
 
     # show and return figure
     if show: plt.show()
-    
+
     p_ex = op.join(p_export, 'bci_{0}_matrix.png'.format(var_name))
     fig.savefig(p_ex)
-    
+
     plt.close()
 
 def bc_matrix(ax, case_ix, xds_case, depth, var_name, 
                     cmap='jet', var_max=None, var_min=None):
     '''
-    Plots LISFLOOD execution output 
+    Plots LISFLOOD execution output
 
     name         - project name
     xds_out_case - lisflood output (xarray.Dataset)
@@ -921,22 +940,21 @@ def bc_matrix(ax, case_ix, xds_case, depth, var_name,
     # number
     ax.text(xds_case['x'].min(), xds_case['y'].min(), case_ix, 
             color='fuchsia', fontweight='bold', fontsize=25)
-    
+
     ax.axis('scaled')
     ax.set_yticklabels([])
     ax.set_xticklabels([])
     ax.set_yticks([])
     ax.set_xticks([])
-    
+
     return pc
 
 def plot_zbeach(name, xds_case, p_export, cmap, show=False):
-    
     fig, ax = plt.subplots(nrows=1, figsize=(8, 8))
 
     im = ax.scatter(xds_case['x'], xds_case['y'], c=xds_case['zbeach'], 
                     cmap=cmap, vmin= 0, vmax= 5)
-    
+
     # add profiles number
     profiles = np.unique(xds_case.pts.values)
     for i in profiles:
@@ -944,7 +962,7 @@ def plot_zbeach(name, xds_case, p_export, cmap, show=False):
         x_pf = xds_pf['x'].mean()
         y_pf = xds_pf['y'].mean()
         ax.text(x_pf+30, y_pf, i+1, c='b')
-    
+
     # properties
     ax.set_facecolor('gainsboro')
     ax.axis('scaled')
@@ -952,7 +970,7 @@ def plot_zbeach(name, xds_case, p_export, cmap, show=False):
     ax.set_xticklabels([])
     ax.set_yticks([])
     ax.set_xticks([])
-    
+
     # title
     ax.set_title('PERIMETER P{0}: minZ={1}m, maxZ={2}m'.format(
         xds_case.perimeter,
@@ -967,8 +985,9 @@ def plot_zbeach(name, xds_case, p_export, cmap, show=False):
 
     # show and return figure
     if show: plt.show()
-    
+
     p_ex = op.join(p_export, 'zbeach_{0}.png'.format(name))
     fig.savefig(p_ex)
-    
+
     plt.close()
+
