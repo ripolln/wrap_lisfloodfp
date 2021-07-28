@@ -2,7 +2,7 @@
 
 A python wrap for the LISFLOOD-FP hydrodinamic numerical model.
 
-## Table of contents
+## Table of contents
 1. [Description](#desc)
 2. [Main Contents](#mc)
 3. [Documentation](#doc)
